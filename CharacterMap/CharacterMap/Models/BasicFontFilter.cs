@@ -486,6 +486,8 @@ public partial class BasicFontFilter
             0x624c, 0x624d, 0x624e, 0x6251, 0x6252, 0x6253, 0x6254, 0x6255, 0x6258
         };
 
-        return font.Variants.Any(v => v.UnicodeRanges.Any(r => commonChars.Any(c => c >= r.First && c <= r.Last)));
+    private static bool ContainsCommonChinese3500(CMFontFamily font)
+    {
+        return font.Variants.Any(v => v.UnicodeRanges.Any(r => CommonChinese3500Set.Any(c => c >= r.First && c <= r.Last)));
     }
 }
