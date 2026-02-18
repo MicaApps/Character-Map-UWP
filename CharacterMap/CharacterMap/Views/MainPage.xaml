@@ -1,4 +1,4 @@
-﻿<views:ViewBase
+﻿﻿<views:ViewBase
     x:Class="CharacterMap.Views.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -581,13 +581,15 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <!--  User Collection Control Panel  -->
                         <Grid
                             x:Name="CollectionControlRow"
-                            Grid.Row="0"
+                            Grid.Row="1"
                             Height="48"
                             Visibility="{x:Bind core:Converters.IsNotNullToVis(ViewModel.SelectedCollection), Mode=OneWay, FallbackValue=Collapsed}">
                             <Border x:Name="CollectionControlBackground" Background="{ThemeResource DefaultAcrylicBrush}" />
@@ -694,12 +696,21 @@
                             </wct:WrapPanel>
                         </Grid>
 
+                        <!--  Font Editing Input Panel  -->
+                        <StackPanel Grid.Row="0" Margin="12,8,12,0" Spacing="8">
+                            <TextBox x:Name="FontPathTextBox" Header="字体文件路径" PlaceholderText="选择字体文件..." TextChanged="FontPathTextBox_TextChanged" />
+                            <Button Content="浏览..." Click="BrowseFontFile_Click" />
+                            <TextBox x:Name="SvgFolderPathTextBox" Header="SVG文件夹路径" PlaceholderText="选择SVG文件夹..." TextChanged="SvgFolderPathTextBox_TextChanged" />
+                            <Button Content="浏览..." Click="BrowseSvgFolder_Click" />
+                            <Button x:Name="GenerateFontButton" Content="生成字体" Click="GenerateFont_Click" IsEnabled="False" />
+                            <TextBlock x:Name="StatusTextBlock" Text="" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
+                        </StackPanel>
+
                         <!--  Font List Refresh Grid  -->
                         <Grid
                             x:Name="CollectionRefreshRow"
-                            Grid.Row="1"
-                            Visibility="{x:Bind ViewModel.IsFontSetExpired, Mode=OneWay, FallbackValue=Collapsed}"
-                            d:Visibility="Visible">
+                            Grid.Row="2"
+                            Visibility="Collapsed">
                             <Border Background="{StaticResource SystemControlAccentDark1AcrylicElementAccentDark1Brush}" />
 
                             <Grid
@@ -739,6 +750,7 @@
                             IsEnabled="{x:Bind ViewModel.CanFilter, Mode=OneWay}"
                             Text="{Binding FontSearch, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                             TextBoxStyle="{StaticResource FontAutoSuggestBoxTextBoxStyle}"
+                            Visibility="Collapsed"
                             d:PlaceholderText="{core:Localizer Key=FontListSearchBox/PlaceholderText}" />
 
                         <Grid
@@ -777,7 +789,7 @@
                                 d:Visibility="Collapsed" />
                         </Grid>
 
-                        <Border Grid.Row="3" Style="{StaticResource FontListStyle}">
+                        <Border Grid.Row="5" Style="{StaticResource FontListStyle}" Visibility="Collapsed">
                             <SemanticZoom x:Name="FontsSemanticZoom">
                                 <SemanticZoom.ZoomedInView>
                                     <controls:ExtendedListView

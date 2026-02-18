@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -19,7 +19,7 @@
     <ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WindowsXamlEnableOverview>true</WindowsXamlEnableOverview>
     <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
-    <AppxBundle>Always</AppxBundle>
+    <AppxBundle>Never</AppxBundle>
     <AppxBundlePlatforms>x64|arm64</AppxBundlePlatforms>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
     <AppInstallerUpdateFrequency>0</AppInstallerUpdateFrequency>
@@ -28,9 +28,8 @@
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-    <PackageCertificateThumbprint>
-    </PackageCertificateThumbprint>
-    <PackageCertificateKeyFile>CharacterMap_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificateThumbprint>AF0ED8666FF121E711568CF09A2AEBB3F0CBDB24</PackageCertificateThumbprint>
+    <PackageCertificateKeyFile></PackageCertificateKeyFile>
     <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
@@ -227,6 +226,7 @@
     <Compile Include="Core\Index.cs" />
     <Compile Include="Core\Localizer.cs" />
     <Compile Include="Core\Properties.cs" />
+
     <Compile Include="Core\SVGPathReciever.cs" />
     <Compile Include="Core\TypographyFeatureInfo.cs" />
     <Compile Include="Models\Records.cs" />
@@ -264,6 +264,8 @@
     <Compile Include="Helpers\CompositionFactory.cs" />
     <Compile Include="Helpers\FlyoutHelper.cs" />
     <Compile Include="Core\FontFinder.cs" />
+    <Compile Include="Core\FontProcessor.cs" />
+    <Compile Include="Core\OpenTypeFont.cs" />
     <Compile Include="Core\CMFontFace.cs" />
     <Compile Include="Core\CMFontFamily.cs" />
     <Compile Include="Models\PanoseFamily.cs" />
@@ -433,7 +435,7 @@
     <Content Include="Assets\FileAssociationTile.png" />
     <Content Include="Assets\RobotoFlex.ttf" />
     <Content Include="Assets\Material.otf" />
-    <None Include="Package.StoreAssociation.xml" />
+
     <Content Include="Assets\ZBG.png" />
     <Content Include="Assets\ZuneAssets\HoverOverlay.png" />
     <Content Include="Properties\Default.rd.xml" />
@@ -592,10 +594,13 @@
       <Project>{3b9d858e-01e7-4706-8d87-2ac4e922a043}</Project>
       <Name>CharacterMap.CX</Name>
     </ProjectReference>
-    <ProjectReference Include="..\CharacterMap.Generators\CharacterMap.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false">
-      <Project>{ad4b0c7d-5f3b-47d5-91df-c8b9a4dd0262}</Project>
+    <ProjectReference Include="..\CharacterMap.Generators\CharacterMap.Generators.csproj">
+      <Project>{AD4B0C7D-5F3B-47D5-91DF-C8B9A4DD0262}</Project>
       <Name>CharacterMap.Generators</Name>
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+
   </ItemGroup>
   <ItemGroup>
     <XliffResource Include="MultilingualResources\CharacterMap.de-DE.xlf" />
@@ -611,7 +616,7 @@
     <XliffResource Include="MultilingualResources\CharacterMap.zh-TW.xlf" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
-    <VisualStudioVersion>14.0</VisualStudioVersion>
+    <VisualStudioVersion>17.0</VisualStudioVersion>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>false</SignAssembly>

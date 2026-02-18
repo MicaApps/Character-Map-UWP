@@ -1,4 +1,4 @@
-﻿using CharacterMap.Views;
+using CharacterMap.Views;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Graphics.Canvas.Text;
 using System.Collections;
@@ -8,6 +8,9 @@ using Windows.ApplicationModel.Core;
 using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Media;
+using CharacterMap.Core;
+using Windows.Storage.Pickers;
+using System.Threading.Tasks;
 
 namespace CharacterMap.ViewModels;
 
@@ -53,6 +56,9 @@ public partial class FontMapViewModel : ViewModelBase
     public RelayCommand<ExportParameters> CommandSavePng { get; }
     public RelayCommand<ExportParameters> CommandSaveSvg { get; }
     public RelayCommand<DevProviderType> ToggleDev { get; }
+    public RelayCommand CommandGenerateFont { get; }
+    public RelayCommand CommandBrowseSvgFolder { get; }
+    public RelayCommand CommandImportSvgForChar { get; }
     public DWriteFallbackFont FallbackFont => FontFinder.Fallback; // Do *not* use { get;} here
     public bool IsExternalFile { get; set; }
     internal bool IsLoadingCharacters { get; private set; }
@@ -90,6 +96,9 @@ public partial class FontMapViewModel : ViewModelBase
     [ObservableProperty] FontItem _selectedFont;
     [ObservableProperty] FontFamily _fontFamily;
     [ObservableProperty] FolderContents _folder;
+    [ObservableProperty] string _svgPath;
+    [ObservableProperty] bool _isGeneratingFont;
+    [ObservableProperty] string _generationStatus;
     [ObservableProperty] DevProviderBase _selectedProvider;
     public FontDisplayMode DisplayMode { get => Get<FontDisplayMode>(); set { if (Set(value)) { UpdateTypography(); } } }
     public FontAnalysis SelectedVariantAnalysis { get => Get<FontAnalysis>(); set { if (Set(value)) { UpdateVariations(); } } }
@@ -212,6 +221,9 @@ public partial class FontMapViewModel : ViewModelBase
         CommandSavePng = new RelayCommand<ExportParameters>(async (b) => await SavePngAsync(b));
         CommandSaveSvg = new RelayCommand<ExportParameters>(async (b) => await SaveSvgAsync(b));
         ToggleDev = new RelayCommand<DevProviderType>(t => SetDev(t));
+        CommandGenerateFont = new RelayCommand(async () => await GenerateFontAsync());
+        CommandBrowseSvgFolder = new RelayCommand(async () => await BrowseSvgFolderAsync());
+        CommandImportSvgForChar = new RelayCommand(async () => await ImportSvgForCharAsync());
         SelectedGlyphCategories = Unicode.CreateRangesList();
 
         Ramps = _rampSizes.Select(r => new RampOption { FontSize = r }).ToList();
@@ -750,6 +762,175 @@ public partial class FontMapViewModel : ViewModelBase
 
         Sequence = s.Insert(start, c.Char);
     }
+
+    private async Task GenerateFontAsync()
+    {
+        if (string.IsNullOrEmpty(SvgPath))
+        {
+            GenerationStatus = "请选择SVG文件夹";
+            return;
+        }
+
+        if (SelectedVariant == null || string.IsNullOrEmpty(SelectedVariant.FileName))
+        {
+            GenerationStatus = "未选择字体";
+            return;
+        }
+
+        IsGeneratingFont = true;
+        GenerationStatus = "正在生成字体...";
+
+        try
+        {
+            var processor = new CharacterMap.Core.FontProcessor();
+            // Use QuickFilePath for the full path
+            var result = await processor.ProcessFontAsync(SelectedVariant.QuickFilePath, SvgPath, SelectedVariant.Face);
+
+            if (result.Success)
+            {
+                GenerationStatus = $"成功! 输出: {result.OutputPath}";
+                
+                // Reload the font to reflect changes
+                try 
+                {
+                     var fontFile = await StorageFile.GetFileFromPathAsync(result.OutputPath);
+                     if (await FontImporter.LoadFromFileAsync(fontFile) is CMFontFamily newFont)
+                     {
+                         var oldFilePath = SelectedVariant.QuickFilePath;
+                         
+                         // Update existing FontItem
+                         SelectedFont.SetFont(newFont);
+                         
+                         // Try to cleanup old temp file if it was a modification
+                         if (oldFilePath.Contains("_v") && File.Exists(oldFilePath))
+                         {
+                             try { /* Cleanup later */ } catch {}
+                         }
+                     }
+                }
+                catch (Exception reloadEx)
+                {
+                    GenerationStatus += $" (重载失败: {reloadEx.Message})";
+                }
+
+                await DialogService.ShowMessageAsync("生成成功", $"字体已生成到: {result.OutputPath}\n映射数: {result.ProcessedCharacters}\n错误数: {result.ErrorCount}");
+            }
+            else
+            {
+                GenerationStatus = $"失败: {result.ErrorMessage}";
+                await DialogService.ShowMessageAsync("生成失败", result.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            GenerationStatus = $"错误: {ex.Message}";
+        }
+        finally
+        {
+            IsGeneratingFont = false;
+        }
+    }
+
+    private async Task BrowseSvgFolderAsync()
+    {
+        var folderPicker = new Windows.Storage.Pickers.FolderPicker();
+        folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        folderPicker.FileTypeFilter.Add("*");
+
+        var folder = await folderPicker.PickSingleFolderAsync();
+        if (folder != null)
+        {
+            SvgPath = folder.Path;
+        }
+    }
+
+    private async Task ImportSvgForCharAsync()
+    {
+        if (SelectedChar == null)
+        {
+            await DialogService.ShowMessageAsync("错误", "请先选择一个字符");
+            return;
+        }
+
+        if (SelectedVariant == null || string.IsNullOrEmpty(SelectedVariant.FileName))
+        {
+            await DialogService.ShowMessageAsync("错误", "未选择字体");
+            return;
+        }
+
+        var picker = new FileOpenPicker();
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add(".svg");
+        
+        var file = await picker.PickSingleFileAsync();
+        if (file == null)
+            return;
+
+        IsGeneratingFont = true;
+        GenerationStatus = "正在处理SVG...";
+
+        try
+        {
+            var processor = new CharacterMap.Core.FontProcessor();
+            // Use QuickFilePath for the full path, not just the file name
+            var result = await processor.ProcessSingleSvgAsync(SelectedVariant.QuickFilePath, file.Path, SelectedChar.UnicodeIndex, SelectedVariant.Face);
+
+            if (result.Success)
+            {
+                GenerationStatus = $"成功! 输出: {result.OutputPath}";
+                
+                // Reload the font to reflect changes
+                try 
+                {
+                     var fontFile = await StorageFile.GetFileFromPathAsync(result.OutputPath);
+                     if (await FontImporter.LoadFromFileAsync(fontFile) is CMFontFamily newFont)
+                     {
+                         // Capture state before update
+                         var oldFilePath = SelectedVariant.QuickFilePath;
+                         var oldCharIndex = SelectedChar?.UnicodeIndex ?? 0;
+
+                         // Update existing FontItem in place to preserve tab binding
+                         SelectedFont.SetFont(newFont);
+                         
+                         // Restore selection
+                        if (oldCharIndex > 0)
+                            SetDefaultChar((int)oldCharIndex);
+
+                         // Try to cleanup old temp file if it was a modification
+                         if (oldFilePath.Contains("_v") && File.Exists(oldFilePath))
+                         {
+                             try 
+                             {
+                                 // We can't delete immediately because it might be locked by DWrite
+                                 // Add to a cleanup list or just leave it for next app start
+                             }
+                             catch {}
+                         }
+                     }
+                }
+                catch (Exception ex)
+                {
+                     await DialogService.ShowMessageAsync("Reload Error", $"Failed to reload font: {ex.Message}");
+                }
+
+                await DialogService.ShowMessageAsync("导入成功", $"字体已生成并加载: {result.OutputPath}");
+            }
+            else
+            {
+                GenerationStatus = $"失败: {result.ErrorMessage}";
+                await DialogService.ShowMessageAsync("导入失败", result.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            GenerationStatus = $"错误: {ex.Message}";
+        }
+        finally
+        {
+            IsGeneratingFont = false;
+        }
+    }
+
 
 }
 

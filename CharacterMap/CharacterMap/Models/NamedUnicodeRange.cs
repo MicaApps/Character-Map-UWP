@@ -1,4 +1,4 @@
-﻿namespace CharacterMap.Models;
+namespace CharacterMap.Models;
 
 [DebuggerDisplay("{Name}, Start: {Start}, End: {End}")]
 public record class NamedUnicodeRange
@@ -26,5 +26,11 @@ public record class NamedUnicodeRange
         Range = new(Start, End);
     }
 
-    public bool Contains(uint index) => index >= Start && index <= End;
+    public bool Contains(uint index)
+    {
+        if (ValidationFn != null)
+            return ValidationFn(index);
+
+        return index >= Start && index <= End;
+    }
 }

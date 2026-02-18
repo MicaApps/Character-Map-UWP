@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
@@ -29,20 +29,6 @@ public static class GeneratorExtensions
             return s[1..^1];
 
         return s;
-
-        if (arg.Expression is TypeOfExpressionSyntax t && t.Type is PredefinedTypeSyntax p)
-            return p.Keyword.ValueText;
-
-        if (arg.Expression is TypeOfExpressionSyntax t1 && t1.Type is IdentifierNameSyntax i)
-            return i.Identifier.ValueText;
-
-        if (arg.Expression is MemberAccessExpressionSyntax m)
-            return arg.Expression.ToString();
-
-        if (arg.Expression is LiteralExpressionSyntax l)
-            return l.Token.ValueText;
-
-        return ((LiteralExpressionSyntax)arg.Expression).Token.ValueText;
     }
 
     public static StringBuilder AppendLine(this StringBuilder s, int indentLevel, string text)

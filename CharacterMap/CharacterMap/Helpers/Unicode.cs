@@ -1,4 +1,4 @@
-﻿using Windows.Data.Text;
+using Windows.Data.Text;
 
 namespace CharacterMap.Helpers;
 
@@ -76,8 +76,20 @@ public static class Unicode
         if (hideWhitespace)
             chars = chars.Where(c => !Unicode.IsWhiteSpaceOrControl(c.UnicodeIndex));
 
+        var commonChinese = categories.FirstOrDefault(c => c.Range == UnicodeRanges.CommonChinese3500);
+        bool is3500Selected = commonChinese?.IsSelected == true;
+
         foreach (var cat in categories.Where(c => !c.IsSelected))
-            chars = chars.Where(c => !cat.Range.Contains(c.UnicodeIndex));
+        {
+            if (is3500Selected && cat.Range == UnicodeRanges.CJKUnifiedIdeographs)
+            {
+                chars = chars.Where(c => !cat.Range.Contains(c.UnicodeIndex) || UnicodeRanges.CommonChinese3500.Contains(c.UnicodeIndex));
+            }
+            else
+            {
+                chars = chars.Where(c => !cat.Range.Contains(c.UnicodeIndex));
+            }
+        }
 
         return chars.ToList();
     }
@@ -89,6 +101,11 @@ public static class Unicode
             .Where(r => ranges.Any(g => g.Name == r.Name))
             .Select(r => new UnicodeRangeModel(r))
             .ToList();
+
+        if (cats.FirstOrDefault(c => c.Range == UnicodeRanges.CJKUnifiedIdeographs) is { } cjk)
+        {
+            cats.Insert(cats.IndexOf(cjk) + 1, new UnicodeRangeModel(UnicodeRanges.CommonChinese3500));
+        }
 
         if (mdl2)
         {

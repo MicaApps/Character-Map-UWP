@@ -1,4 +1,4 @@
-﻿using CharacterMap.Controls;
+using CharacterMap.Controls;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Toolkit.Uwp.UI.Controls;
 using Microsoft.UI.Xaml.Controls;
@@ -16,6 +16,9 @@ using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
+using CharacterMap.Core;
+using CharacterMap.ViewModels;
+using System.IO;
 
 namespace CharacterMap.Views;
 
@@ -27,6 +30,8 @@ public sealed partial class MainPage : ViewBase, IInAppNotificationPresenter, IP
     public MainViewModel ViewModel { get; }
 
     private Debouncer _fontListDebouncer { get; } = new ();
+    private Debouncer _fontLoadDebouncer { get; } = new ();
+    private FontItem _previewFontItem;
 
     private UISettings _uiSettings { get; }
 
@@ -1009,10 +1014,216 @@ public sealed partial class MainPage : ViewBase, IInAppNotificationPresenter, IP
 
         // TODO : What if TypeRamp view loads first
     }
-}
 
-public partial class MainPage
-{
+    /* Font Editing Event Handlers */
+
+    private StorageFile _pickedFontFile;
+
+    private async void BrowseFontFile_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add(".ttf");
+        picker.FileTypeFilter.Add(".otf");
+        picker.FileTypeFilter.Add(".woff");
+        picker.FileTypeFilter.Add(".woff2");
+
+        var file = await picker.PickSingleFileAsync();
+        if (file != null)
+        {
+            _pickedFontFile = file;
+            FontPathTextBox.Text = file.Path;
+            UpdateGenerateButtonState();
+        }
+    }
+
+    private async void BrowseSvgFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add("*");
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder != null)
+        {
+            SvgFolderPathTextBox.Text = folder.Path;
+            UpdateGenerateButtonState();
+        }
+    }
+
+    private void FontPathTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateGenerateButtonState();
+        if (!string.IsNullOrWhiteSpace(FontPathTextBox.Text))
+        {
+            // If the user picked a file, use it directly if the path matches
+            if (_pickedFontFile != null && _pickedFontFile.Path == FontPathTextBox.Text)
+            {
+                var fileToLoad = _pickedFontFile;
+                _fontLoadDebouncer.Debounce(500, () => LoadBaseFontAsync(FontPathTextBox.Text, fileToLoad));
+                _pickedFontFile = null; // Clear it so subsequent manual edits don't reuse it
+            }
+            else
+            {
+                _fontLoadDebouncer.Debounce(500, () => LoadBaseFontAsync(FontPathTextBox.Text));
+            }
+        }
+    }
+
+    private async void LoadBaseFontAsync(string path, StorageFile preLoadedFile = null)
+    {
+        var statusBlock = this.FindName("StatusTextBlock") as TextBlock;
+
+        path = path?.Trim('"');
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            if (statusBlock != null) statusBlock.Text = "文件路径为空";
+            return;
+        }
+
+        try
+        {
+            if (statusBlock != null) statusBlock.Text = "正在加载...";
+            
+            StorageFile file = preLoadedFile;
+            
+            if (file == null)
+            {
+                try
+                {
+                    file = await StorageFile.GetFileFromPathAsync(path);
+                }
+                catch (FileNotFoundException)
+                {
+                    if (statusBlock != null) statusBlock.Text = "文件不存在";
+                    return;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    if (statusBlock != null) statusBlock.Text = "系统限制：请点击“浏览”按钮选择此文件以获取权限";
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (statusBlock != null) statusBlock.Text = $"访问错误: {ex.Message}";
+                    return;
+                }
+            }
+
+            if (await FontImporter.LoadFromFileAsync(file) is CMFontFamily font)
+            {
+                if (Dispatcher.HasThreadAccess)
+                    AddFontToViewModel(font);
+                else
+                    await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => AddFontToViewModel(font));
+
+                if (statusBlock != null) statusBlock.Text = "加载成功";
+            }
+            else
+            {
+                if (statusBlock != null) statusBlock.Text = "加载失败：无效的字体文件";
+            }
+        }
+        catch (Exception ex)
+        {
+            if (statusBlock != null) statusBlock.Text = $"错误: {ex.Message}";
+        }
+    }
+
+    private void AddFontToViewModel(CMFontFamily font)
+    {
+        // Clear existing temporary fonts if needed, or just add new one
+        // For now, let's just add and select
+        var item = new FontItem(font);
+        ViewModel.Fonts.Add(item);
+        ViewModel.TabIndex = ViewModel.Fonts.Count - 1;
+        ViewModel.SelectedFont = font;
+    }
+
+    private void SvgFolderPathTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateGenerateButtonState();
+    }
+
+    private void UpdateGenerateButtonState()
+    {
+        GenerateFontButton.IsEnabled = !string.IsNullOrEmpty(FontPathTextBox.Text) && 
+                                        !string.IsNullOrEmpty(SvgFolderPathTextBox.Text);
+    }
+
+    private async void GenerateFont_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(FontPathTextBox.Text) || string.IsNullOrEmpty(SvgFolderPathTextBox.Text))
+        {
+            StatusTextBlock.Text = "请同时选择字体文件和SVG文件夹";
+            return;
+        }
+
+        StatusTextBlock.Text = "正在处理字体文件...";
+        GenerateFontButton.IsEnabled = false;
+
+        try
+        {
+            var fontProcessor = new FontProcessor();
+            
+            // Try to get the font face from the loaded font
+            DWriteFontFace fontFace = null;
+            if (ViewModel.SelectedFont != null)
+            {
+                 fontFace = ViewModel.SelectedFont.DefaultVariant.Face;
+            }
+
+            var result = await fontProcessor.ProcessFontAsync(FontPathTextBox.Text, SvgFolderPathTextBox.Text, fontFace);
+            
+            if (result.Success)
+            {
+                StatusTextBlock.Text = $"字体生成成功: 处理了 {result.ProcessedCharacters} 个字符, {result.ErrorCount} 个错误";
+                
+                // Automatically load the generated font
+                try
+                {
+                    var file = await StorageFile.GetFileFromPathAsync(result.OutputPath);
+                    if (await FontImporter.LoadFromFileAsync(file) is CMFontFamily font)
+                    {
+                        if (Dispatcher.HasThreadAccess)
+                            AddFontToViewModel(font);
+                        else
+                            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => AddFontToViewModel(font));
+                            
+                        // Update the text box to point to the new font so subsequent edits work on the modified version
+                        // FontPathTextBox.Text = result.OutputPath; // Optional: might confuse user if they want to keep base.
+                        // For now, let's just show it.
+                        
+                         var dialog = new Windows.UI.Popups.MessageDialog(
+                            $"字体文件已生成并加载: {Path.GetFileName(result.OutputPath)}\n" +
+                            $"处理了 {result.ProcessedCharacters} 个字符\n" +
+                            $"{result.ErrorCount} 个错误", 
+                            "字体生成成功");
+                         await dialog.ShowAsync();
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                     StatusTextBlock.Text = $"生成成功但加载失败: {loadEx.Message}";
+                }
+            }
+            else
+            {
+                StatusTextBlock.Text = $"字体生成失败: {result.ErrorMessage}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusTextBlock.Text = $"处理错误: {ex.Message}";
+        }
+        finally
+        {
+            GenerateFontButton.IsEnabled = true;
+        }
+    }
+
     public static async Task<WindowInformation> CreateWindowAsync(MainViewModelArgs args)
     {
         static void CreateView(MainViewModelArgs a)

@@ -1,4 +1,4 @@
-﻿namespace CharacterMap.Models;
+namespace CharacterMap.Models;
 
 public class MakeBasicFilterAttribute : Attribute
 {
@@ -347,4 +347,6 @@ public static partial class UnicodeRanges
     /* These are special cases for MDL2 and are not included in All */
     public static NamedUnicodeRange MDL2Deprecated = new("Deprecated", 0xE000, 0xE5FF - 0xE000 + 1);
     public static NamedUnicodeRange PrivateUseAreaMDL2 = new("Private Use Area", 58880, 4864);
+
+    public static NamedUnicodeRange CommonChinese3500 = new("3500 Common Chinese", i => BasicFontFilter.CommonChinese3500Set.Contains(i));
 }

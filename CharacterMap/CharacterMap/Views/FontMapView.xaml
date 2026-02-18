@@ -1,4 +1,4 @@
-﻿<views:ViewBase
+<views:ViewBase
     x:Class="CharacterMap.Views.FontMapView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -515,6 +515,29 @@
                 Text="{Binding SelectedFont.Font.Name, Converter={StaticResource TitleConverter}}"
                 TextTrimming="CharacterEllipsis"
                 d:Text="Font Name" />
+
+            <!--  Character Input Panel  -->
+            <StackPanel
+                x:Name="CharacterInputPanel"
+                Grid.Row="1"
+                Grid.Column="1"
+                Margin="24,0,8,0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="8">
+                <TextBox
+                    x:Name="CharacterInputTextBox"
+                    Width="120"
+                    Header="输入字符"
+                    PlaceholderText="输入要预览的字符..." />
+                <Button
+                    x:Name="PreviewCharacterButton"
+                    Margin="0,12,0,0"
+                    VerticalAlignment="Bottom"
+                    Click="PreviewCharacter_Click"
+                    Content="预览" />
+            </StackPanel>
 
             <toolkit:WrapPanel
                 x:Name="ExternalPanel"
@@ -1183,6 +1206,13 @@
                         Style="{StaticResource ThemeFontIconStyle}" />
                 </controls:UXButton>
 
+                <!-- SVG Import UI -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Margin="12,0,12,12" Spacing="8">
+                    <TextBlock Text="SVG 导入 (修改模式)" FontWeight="Bold" Opacity="0.8" />
+                    <TextBlock Text="{x:Bind ViewModel.GenerationStatus, Mode=OneWay}" TextWrapping="Wrap" Foreground="{ThemeResource SystemControlErrorTextForegroundBrush}" MaxHeight="60" />
+                    <Button Content="导入 SVG" Command="{x:Bind ViewModel.CommandImportSvgForChar}" HorizontalAlignment="Stretch" />
+                </StackPanel>
+
 
                 <!--  Notifications  -->
                 <StackPanel
@@ -1696,6 +1726,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!--  Character Preview  -->
@@ -1942,9 +1974,44 @@
 
                         </Button>
 
-                        <!--  Copy / Save / Fit Row  -->
+                        <!-- Font Generation Section -->
                         <StackPanel
                             Grid.Row="5"
+                            Margin="12,12,12,12"
+                            Spacing="8"
+                            Orientation="Vertical">
+                            <TextBlock Text="SVG 字体生成" FontWeight="Bold" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{x:Bind ViewModel.SvgPath, Mode=TwoWay}" PlaceholderText="SVG 文件夹路径" />
+                                <Button Grid.Column="1" Command="{x:Bind ViewModel.CommandBrowseSvgFolder}" Content="..." />
+                            </Grid>
+                            <Button 
+                                HorizontalAlignment="Stretch" 
+                                Command="{x:Bind ViewModel.CommandGenerateFont}" 
+                                Content="生成字体" 
+                                IsEnabled="{x:Bind core:Converters.False(ViewModel.IsGeneratingFont), Mode=OneWay}"/>
+                            <TextBlock 
+                                Text="{x:Bind ViewModel.GenerationStatus, Mode=OneWay}" 
+                                Foreground="Red" 
+                                TextWrapping="Wrap" />
+                            <ProgressBar 
+                                IsIndeterminate="True" 
+                                Visibility="{x:Bind core:Converters.TrueToVis(ViewModel.IsGeneratingFont), Mode=OneWay}" />
+                            <TextBlock Text="单字编辑" FontWeight="Bold" Margin="0,12,0,0" />
+                            <Button 
+                                HorizontalAlignment="Stretch" 
+                                Command="{x:Bind ViewModel.CommandImportSvgForChar}" 
+                                Content="导入当前字符 SVG" 
+                                IsEnabled="{x:Bind core:Converters.False(ViewModel.IsGeneratingFont), Mode=OneWay}"/>
+                        </StackPanel>
+
+                        <!--  Copy / Save / Fit Row  -->
+                        <StackPanel
+                            Grid.Row="6"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Bottom"
                             core:Properties.UseStandardReposition="{x:Bind ViewModel.AllowAnimation, Mode=OneWay}">

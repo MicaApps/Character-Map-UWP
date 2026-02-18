@@ -1,4 +1,4 @@
-﻿using CharacterMap.Controls;
+using CharacterMap.Controls;
 using Microsoft.Toolkit.Uwp.UI.Controls;
 using System.ComponentModel;
 using Windows.System;
@@ -1182,6 +1182,39 @@ public sealed partial class FontMapView : ViewBase, IInAppNotificationPresenter,
         CopySequenceRoot.GetElementVisual().StartAnimation(CompositionFactory.TRANSLATION, CompositionFactory.CreateSlideIn(sender));
 
         //Composition.SetThemeShadow(CopySequenceRoot, 20, CharGrid);
+    }
+
+    /* Character Preview Event Handler */
+
+    private void PreviewCharacter_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(CharacterInputTextBox.Text))
+        {
+            // Get the first character from the input
+            char previewChar = CharacterInputTextBox.Text[0];
+            
+            // Navigate to the character in the grid
+            if (ViewModel?.SelectedFont?.Font != null)
+            {
+                // Try to find and select the character
+                var charItem = ViewModel.Chars.FirstOrDefault(c => c.Char == previewChar.ToString());
+                if (charItem != null)
+                {
+                    ViewModel.SelectedChar = charItem;
+                    
+                    // Scroll to the character in the grid if possible
+                    if (CharGrid != null)
+                    {
+                        CharGrid.ScrollIntoView(charItem);
+                    }
+                }
+                else
+                {
+                    // Character not found in font, show notification
+                    InAppNotificationHelper.ShowNotification(this, $"字符 '{previewChar}' 在此字体中未找到", 2000);
+                }
+            }
+        }
     }
 }
 

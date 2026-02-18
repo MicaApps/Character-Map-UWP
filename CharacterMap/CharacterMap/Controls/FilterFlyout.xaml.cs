@@ -1,4 +1,4 @@
-﻿using System.Windows.Input;
+using System.Windows.Input;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -100,7 +100,8 @@ public sealed partial class FilterFlyout : MenuFlyout
             .Add(BasicFontFilter.ScriptHebrew, style)
             .Add(BasicFontFilter.ScriptKoreanHangul, style)
             .Add(BasicFontFilter.ScriptBasicLatin, style)
-            .Add(BasicFontFilter.ScriptThai, style);
+            .Add(BasicFontFilter.ScriptThai, style)
+            .Add(BasicFontFilter.CommonChinese3500, style);
 
 
         // 3. "More" option
