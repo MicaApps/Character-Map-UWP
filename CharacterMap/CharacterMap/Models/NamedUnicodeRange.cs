@@ -9,6 +9,14 @@ public record class NamedUnicodeRange
 
     public UnicodeRange Range { get; }
 
+    public Func<uint, bool> ValidationFn { get; }
+
+    public NamedUnicodeRange(string name, Func<uint, bool> validationFn)
+    {
+        Name = name;
+        ValidationFn = validationFn;
+    }
+
     public NamedUnicodeRange(string name, uint start, uint length)
     {
         Name = name;
